@@ -1,0 +1,23 @@
+name: sars-cov-2
+channels:
+  - conda-forge
+  - bioconda
+  - agbiome
+  - defaults
+dependencies:
+  - bwa
+  - blast  
+  - samtools
+#  - samstats
+#  - bbtools
+#  - ivar
+#  - fastqc
+#  - multiqc
+#  - qualimap
+#  - trinity
+#  - mafft
+#  - seqtk
+#  - bedtools
+#  - ucsc-fasplit
+#  - emboss
+#  - minimap2
