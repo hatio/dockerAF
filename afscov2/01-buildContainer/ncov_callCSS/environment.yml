@@ -1,0 +1,12 @@
+name: ncov_callCSS
+channels:
+  - bioconda
+  - defaults
+dependencies:
+  - bwa
+  - bbmap
+  - samtools
+  - ivar
+  - fastqc
+  - multiqc
+  
