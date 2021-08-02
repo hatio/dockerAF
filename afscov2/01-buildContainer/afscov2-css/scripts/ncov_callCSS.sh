@@ -3,7 +3,7 @@
 ##For SARS-CoV2 consensus calling
 
 read -p "Enter Output name: " outname
-DIR="/media/data_storage/Reference/SARS-CoV2"
+
 #Make directory
 ls -d *.gz|cut -d '_' -f 1,2|uniq > sample_names.tmp
 for sample in $(cat sample_names.tmp);do
@@ -11,26 +11,21 @@ for sample in $(cat sample_names.tmp);do
 	mv $sample*.gz $sample;
 done
 
-#Make index
-cp $DIR/NC_045512.fasta .  
-bwa index -a is NC_045512.fasta;
-samtools faidx NC_045512.fasta;
-grep -i ">" NC_045512.fasta|cut -d '|' -f 1|cut -c2-9 > ref_name.txt
 
 #Trimming
-cat sample_names.tmp|parallel --eta -j 10 --load 80% --noswap 'bbduk.sh -Xmx20g in1={}/{}_L001_R1_001.fastq.gz in2={}/{}_L001_R2_001.fastq.gz out1={}/Trimmed_{}_R1.fq out2={}/Trimmed_{}_R2.fq ref=/media/data_storage/Hong/index_adapter/MiSeq_adapter_index0.fa ktrim=r k=23 mink=11 hdist=1 tpe tbo qtrim=rl minlength=100 minavgquality=20 &>{}/{}_Trimming.log;'
+cat sample_names.tmp|parallel --eta -j $ncpu --load 80% --noswap 'bbduk.sh -Xmx20g in1={}/{}_L001_R1_001.fastq.gz in2={}/{}_L001_R2_001.fastq.gz out1={}/Trimmed_{}_R1.fq out2={}/Trimmed_{}_R2.fq ref=/media/data_storage/Hong/index_adapter/MiSeq_adapter_index0.fa ktrim=r k=23 mink=11 hdist=1 tpe tbo qtrim=rl minlength=100 minavgquality=20 &>{}/{}_Trimming.log;'
 
 #Alignment using BWA-MEM
 
-cat sample_names.tmp|parallel --eta -j 10 --load 80% --noswap 'bwa mem -t 20 -V NC_045512.fasta {}/Trimmed_{}_R1.fq {}/Trimmed_{}_R2.fq -o {}/{}.sam'
-cat sample_names.tmp|parallel --eta -j 10 --load 80% --noswap 'samtools view {}/{}.sam -o {}/{}.bam'
-cat sample_names.tmp|parallel --eta -j 10 --load 80% --noswap 'samtools sort {}/{}.bam -o {}/{}.sorted.bam'
-cat sample_names.tmp|parallel --eta -j 10 --load 80% --noswap 'rm -f {}/{}.sam {}/{}.bam'
+cat sample_names.tmp|parallel --eta -j $ncpu --load 80% --noswap 'bwa mem -t 20 -V /db/NC_045512.fasta {}/Trimmed_{}_R1.fq {}/Trimmed_{}_R2.fq -o {}/{}.sam'
+cat sample_names.tmp|parallel --eta -j $ncpu --load 80% --noswap 'samtools view {}/{}.sam -o {}/{}.bam'
+cat sample_names.tmp|parallel --eta -j $ncpu --load 80% --noswap 'samtools sort {}/{}.bam -o {}/{}.sorted.bam'
+cat sample_names.tmp|parallel --eta -j $ncpu --load 80% --noswap 'rm -f {}/{}.sam {}/{}.bam'
 
 
 #ivar trim
-cat sample_names.tmp|parallel --eta -j 10 --load 80% --noswap 'ivar trim -e -i {}/{}.sorted.bam -b /media/data_storage/Hong/ARTIC/V3/ARTIC-V3.bed -p {}/{}.primertrim'
-cat sample_names.tmp|parallel --eta -j 10 --load 80% --noswap 'samtools sort {}/{}.primertrim.bam -o {}/{}.primertrim.sorted.bam'
+cat sample_names.tmp|parallel --eta -j $ncpu --load 80% --noswap 'ivar trim -e -i {}/{}.sorted.bam -b /media/data_storage/Hong/ARTIC/V3/ARTIC-V3.bed -p {}/{}.primertrim'
+cat sample_names.tmp|parallel --eta -j $ncpu --load 80% --noswap 'samtools sort {}/{}.primertrim.bam -o {}/{}.primertrim.sorted.bam'
 
 #Calculate DOC&BOC
 for sample in $(cat sample_names.tmp);do
@@ -75,9 +70,9 @@ for sample in $(cat sample_names.tmp);do
 done
 
 #Consensus Calling by without ambiguous base
-cat sample_names.tmp|parallel --eta -j 10 --load 80% --noswap 'samtools mpileup -Q 25 -A {}/{}.primertrim.sorted.bam|ivar consensus -q 25 -t 0 -m 10 -n N -p {}/{}_ivar'
-cat sample_names.tmp|parallel --eta -j 10 --load 80% --noswap 'sed 's/[a-z]/N/g' {}/{}_ivar.fa > {}/{}_ivar.tmp'
-cat sample_names.tmp|parallel --eta -j 10 --load 80% --noswap 'sed "s/>.*/>{}/g" {}/{}_ivar.tmp >> {}.CSS.fa'
+cat sample_names.tmp|parallel --eta -j $ncpu --load 80% --noswap 'samtools mpileup -Q 25 -A {}/{}.primertrim.sorted.bam|ivar consensus -q 25 -t 0 -m 10 -n N -p {}/{}_ivar'
+cat sample_names.tmp|parallel --eta -j $ncpu --load 80% --noswap 'sed 's/[a-z]/N/g' {}/{}_ivar.fa > {}/{}_ivar.tmp'
+cat sample_names.tmp|parallel --eta -j $ncpu --load 80% --noswap 'sed "s/>.*/>{}/g" {}/{}_ivar.tmp >> {}.CSS.fa'
 
 for sample in $(cat sample_names.tmp);do
 	cat $sample.CSS.fa >> $outname.consensus.fa
@@ -94,7 +89,7 @@ done
 
 #QC
 mkdir QC_report
-cat sample_names.tmp|parallel --eta -j 10 --load 80% --noswap 'fastqc {}/{}.primertrim.sorted.bam --outdir ./QC_report|qualimap bamqc -bam {}/{}.primertrim.sorted.bam'
+cat sample_names.tmp|parallel --eta -j $ncpu --load 80% --noswap 'fastqc {}/{}.primertrim.sorted.bam --outdir ./QC_report|qualimap bamqc -bam {}/{}.primertrim.sorted.bam'
 #cat sample_names.tmp|parallel --eta -j 10 --load 80% --noswap 'SAMstatsParallel --sorted_sam_file {}/{}.primertrim.sorted.bam --outf ./QC_report/{}.samstat --chunk_size 1000 --threads 10'
 
 multiqc .

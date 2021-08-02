@@ -23,8 +23,10 @@ RUN chmod 555 /scripts -R
 ENV PATH=/scripts:$PATH
 CMD ncov_callCSS.sh
 
-# copy reference sequence over and build bwa index
+# copy sequences of reference, adapter, and primers
 COPY db /db
+
+# build bwa index of reference sequence
 RUN echo "**** build reference index ****" && \
     bwa index -a is /db/NC_045512.fasta && \
     samtools faidx /db/NC_045512.fasta && \
