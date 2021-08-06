@@ -1,0 +1,7 @@
+name: ncov_callCSS
+channels:
+  - bioconda
+  - defaults
+dependencies:
+  - multiqc
+  
